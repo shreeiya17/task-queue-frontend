@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, CartesianGrid
 } from 'recharts';
 
-const API = 'http://localhost:3000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const socket = io(API);
 
 // ── Colours ───────────────────────────────────────────────────────
