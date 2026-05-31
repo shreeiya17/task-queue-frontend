@@ -6,7 +6,11 @@ import {
   ResponsiveContainer, CartesianGrid
 } from 'recharts';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// ── API URL ───────────────────────────────────────────────────────
+// Priority: VITE_API_URL env var → Railway URL (production) → localhost (dev)
+const RAILWAY_URL = 'https://task-queue-system-production-4929.up.railway.app';
+const API = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? RAILWAY_URL : 'http://localhost:3000');
 
 // ── Colours ───────────────────────────────────────────────────────
 const S = {
@@ -57,7 +61,6 @@ function Card({ label, value, color, sub, onClick, active }) {
   );
 }
 
-// ── Live event feed ───────────────────────────────────────────────
 function EventFeed({ events }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -88,7 +91,6 @@ function EventFeed({ events }) {
   );
 }
 
-// ── Progress bar ──────────────────────────────────────────────────
 function Progress({ job }) {
   if (job.status === 'completed') return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -107,95 +109,54 @@ function Progress({ job }) {
       <span style={{ fontSize: 10, color: '#9CA3AF', minWidth: 30 }}>{job.progress || 0}%</span>
     </div>
   );
-  if (job.status === 'failed') return (
-    <span style={{ fontSize: 11, color: '#EF4444' }}>↻ retrying</span>
-  );
-  if (job.status === 'dead') return (
-    <span style={{ fontSize: 11, color: '#FB7185' }}>→ DLQ</span>
-  );
+  if (job.status === 'failed') return <span style={{ fontSize: 11, color: '#EF4444' }}>↻ retrying</span>;
+  if (job.status === 'dead')   return <span style={{ fontSize: 11, color: '#FB7185' }}>→ DLQ</span>;
   return <span style={{ fontSize: 11, color: '#D1D5DB' }}>—</span>;
 }
 
-// ── DEMO SCENARIOS ────────────────────────────────────────────────
 const SCENARIOS = [
   {
-    id: 'payment',
-    label: '💳 Payment Notification',
-    type: 'email',
-    priority: 1,
+    id: 'payment', label: '💳 Payment Notification', type: 'email', priority: 1,
     desc: 'Critical priority — jumps queue instantly',
     bg: '#FEF2F2', border: '#FCA5A5', text: '#DC2626',
-    makeData: () => ({
-      to: `customer${Date.now()}@bank.com`,
-      subject: 'Payment of ₹2,499 confirmed',
-      template: 'payment_confirmation',
-    }),
+    makeData: () => ({ to: `customer${Date.now()}@bank.com`, subject: 'Payment of ₹2,499 confirmed', template: 'payment_confirmation' }),
     eventTitle: 'Payment notification enqueued',
     eventDetail: 'Priority 1 — will process before all other jobs',
   },
   {
-    id: 'order',
-    label: '📦 Order Confirmation',
-    type: 'email',
-    priority: 5,
+    id: 'order', label: '📦 Order Confirmation', type: 'email', priority: 5,
     desc: 'Standard priority — normal queue',
     bg: '#EFF6FF', border: '#93C5FD', text: '#1D4ED8',
-    makeData: () => ({
-      to: `user${Date.now()}@shop.com`,
-      subject: `Order #${Math.floor(Math.random()*90000+10000)} confirmed`,
-      template: 'order_confirmation',
-    }),
+    makeData: () => ({ to: `user${Date.now()}@shop.com`, subject: `Order #${Math.floor(Math.random()*90000+10000)} confirmed`, template: 'order_confirmation' }),
     eventTitle: 'Order confirmation enqueued',
     eventDetail: 'Priority 5 — standard processing queue',
   },
   {
-    id: 'report',
-    label: '📊 Analytics Report',
-    type: 'report',
-    priority: 5,
+    id: 'report', label: '📊 Analytics Report', type: 'report', priority: 5,
     desc: 'Heavy job — takes ~1.3s to generate',
     bg: '#F0FDF4', border: '#86EFAC', text: '#15803D',
-    makeData: () => ({
-      userId: `user_${Math.floor(Math.random()*1000)}`,
-      reportType: 'monthly_analytics',
-      month: new Date().toLocaleString('default', { month: 'long' }),
-    }),
+    makeData: () => ({ userId: `user_${Math.floor(Math.random()*1000)}`, reportType: 'monthly_analytics', month: new Date().toLocaleString('default', { month: 'long' }) }),
     eventTitle: 'Analytics report generation queued',
     eventDetail: 'CPU-intensive job — ~1.3s processing time',
   },
   {
-    id: 'flaky',
-    label: '⚡ Flaky API Call',
-    type: 'test',
-    priority: 5,
+    id: 'flaky', label: '⚡ Flaky API Call', type: 'test', priority: 5,
     desc: 'Fails 2× then succeeds — shows retry',
     bg: '#FFFBEB', border: '#FCD34D', text: '#B45309',
-    makeData: () => ({
-      failTimes: 2,
-      jobName: `payment-gateway-${Date.now()}`,
-      service: 'Razorpay webhook',
-    }),
+    makeData: () => ({ failTimes: 2, jobName: `payment-gateway-${Date.now()}`, service: 'Razorpay webhook' }),
     eventTitle: 'Flaky API call queued',
     eventDetail: 'Will fail 2× with backoff retry, then succeed',
   },
   {
-    id: 'exhausted',
-    label: '💀 Simulate DLQ',
-    type: 'test',
-    priority: 5,
+    id: 'exhausted', label: '💀 Simulate DLQ', type: 'test', priority: 5,
     desc: 'Fails all retries → Dead Letter Queue',
     bg: '#FFF1F2', border: '#FB7185', text: '#BE123C',
-    makeData: () => ({
-      failTimes: 99,
-      jobName: `dead-service-${Date.now()}`,
-      service: 'Unavailable external API',
-    }),
+    makeData: () => ({ failTimes: 99, jobName: `dead-service-${Date.now()}`, service: 'Unavailable external API' }),
     eventTitle: 'Unreachable service queued',
     eventDetail: 'Will exhaust all 3 retries → moves to DLQ',
   },
 ];
 
-// ── Main App ──────────────────────────────────────────────────────
 export default function App() {
   const [jobs,      setJobs]      = useState([]);
   const [stats,     setStats]     = useState({ waiting:0, active:0, completed:0, failed:0, delayed:0, dlq:0 });
@@ -225,15 +186,19 @@ export default function App() {
     axios.get(`${API}/api/jobs/stats`).then(r => setStats(r.data));
   }, []);
 
-  // WebSocket Mounting Lifecycle
+  // WebSocket
   useEffect(() => {
-    socketRef.current = io(API, {
-      transports: ['websocket', 'polling']
-    });
+    socketRef.current = io(API, { transports: ['websocket', 'polling'] });
     const socket = socketRef.current;
 
-    socket.on('connect',    () => { setConnected(true);  addEvent('🔌', 'Dashboard connected', 'Real-time updates active', '#15803D'); });
-    socket.on('disconnect', () => { setConnected(false); addEvent('⚠️', 'Dashboard disconnected', 'Attempting to reconnect...', '#B91C1C'); });
+    socket.on('connect', () => {
+      setConnected(true);
+      addEvent('🔌', 'Dashboard connected', 'Real-time updates active', '#15803D');
+    });
+    socket.on('disconnect', () => {
+      setConnected(false);
+      addEvent('⚠️', 'Dashboard disconnected', 'Attempting to reconnect...', '#B91C1C');
+    });
 
     socket.on('job:completed', u => {
       const ms = u.completed_at && u.created_at
@@ -255,24 +220,34 @@ export default function App() {
       setJobs(p => p.map(j => j.id === u.id ? { ...j, ...u } : j));
     });
 
-    socket.on('job:progress', ({ id, progress, type }) => {
+    socket.on('job:progress', ({ id, progress }) => {
       setJobs(p => p.map(j => j.id === id ? { ...j, progress, status: 'active' } : j));
     });
 
+    // FIX 1 — only append a history point when values actually changed.
+    // Without this the chart scrolls continuously even when the queue is idle,
+    // because the server emits queue:stats every second regardless.
     socket.on('queue:stats', s => {
       setStats(s);
-      setHistory(prev => [...prev.slice(-29), {
-        time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-        ...s,
-      }]);
+      setHistory(prev => {
+        const last = prev[prev.length - 1];
+        const changed = !last ||
+          last.waiting   !== s.waiting   ||
+          last.active    !== s.active    ||
+          last.completed !== s.completed ||
+          last.failed    !== s.failed    ||
+          last.dlq       !== s.dlq;
+        if (!changed) return prev;
+        return [...prev.slice(-29), {
+          time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+          ...s,
+        }];
+      });
     });
 
-    return () => {
-      if (socket) socket.disconnect();
-    };
+    return () => { if (socket) socket.disconnect(); };
   }, [addEvent]);
 
-  // Add a job
   const addJob = useCallback(async (scenario) => {
     setLoading(true);
     try {
@@ -294,12 +269,11 @@ export default function App() {
         return [newJob, ...p].slice(0, 50);
       });
     } catch (e) {
-      addEvent('❌', 'Failed to enqueue job', e.message, '#B91C1C');
+      addEvent('❌', 'Failed to enqueue job',
+        e.response?.data?.error || e.message, '#B91C1C');
     }
     setLoading(false);
   }, [filter, addEvent]);
-
-  const filteredJobs = jobs;
 
   const filterLabels = [
     { key: 'all',       label: 'All' },
@@ -326,12 +300,10 @@ export default function App() {
           </p>
         </div>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 14px', borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8,
           background: connected ? '#F0FDF4' : '#FEF2F2',
           border: `1.5px solid ${connected ? '#22C55E' : '#EF4444'}`,
-          fontSize: 12, fontWeight: 600,
-          color: connected ? '#15803D' : '#B91C1C',
+          fontSize: 12, fontWeight: 600, color: connected ? '#15803D' : '#B91C1C',
         }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%',
@@ -345,12 +317,12 @@ export default function App() {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         {[
-          { label:'Waiting',   value:stats.waiting,   color:'waiting',   sub:'In queue', key:'waiting' },
-          { label:'Active',    value:stats.active,    color:'active',    sub:'Processing now', key:'active' },
-          { label:'Completed', value:stats.completed, color:'completed', sub:'Successfully done', key:'completed' },
-          { label:'Failed',    value:stats.failed,    color:'failed',    sub:'Will retry', key:'failed' },
-          { label:'Delayed',   value:stats.delayed,   color:'delayed',   sub:'Scheduled', key:'delayed' },
-          { label:'DLQ',       value:stats.dlq,       color:'dead',      sub:'Exhausted retries', key:'dlq' },
+          { label:'Waiting',   value:stats.waiting,   color:'waiting',   sub:'In queue',          key:'waiting'   },
+          { label:'Active',    value:stats.active,    color:'active',    sub:'Processing now',     key:'active'    },
+          { label:'Completed', value:stats.completed, color:'completed', sub:'Successfully done',  key:'completed' },
+          { label:'Failed',    value:stats.failed,    color:'failed',    sub:'Will retry',         key:'failed'    },
+          { label:'Delayed',   value:stats.delayed,   color:'delayed',   sub:'Scheduled',          key:'delayed'   },
+          { label:'DLQ',       value:stats.dlq,       color:'dead',      sub:'Exhausted retries',  key:'dlq'       },
         ].map(c => (
           <Card key={c.key} {...c}
             active={filter === c.key}
@@ -382,10 +354,12 @@ export default function App() {
                 <XAxis dataKey="time" tick={{fontSize:8,fill:'#9CA3AF'}} interval="preserveStartEnd"/>
                 <YAxis tick={{fontSize:8,fill:'#9CA3AF'}}/>
                 <Tooltip contentStyle={{fontSize:11,borderRadius:8,border:'1px solid #E5E7EB'}}/>
+                {/* FIX 2 — isAnimationActive={false} on ALL areas prevents recharts  */}
+                {/* from re-animating the chart on every parent re-render.             */}
                 <Area type="monotone" dataKey="completed" stroke="#22C55E" fill="url(#gC)" strokeWidth={2} name="Completed" isAnimationActive={false}/>
-                <Area type="monotone" dataKey="waiting"   stroke="#F59E0B" fill="url(#gW)" strokeWidth={2} name="Waiting" isAnimationActive={false}/>
-                <Area type="monotone" dataKey="active"    stroke="#3B82F6" fill="url(#gA)" strokeWidth={2} name="Active" isAnimationActive={false}/>
-                <Area type="monotone" dataKey="dlq"       stroke="#FB7185" fill="url(#gD)" strokeWidth={2} name="DLQ" isAnimationActive={false}/>
+                <Area type="monotone" dataKey="waiting"   stroke="#F59E0B" fill="url(#gW)" strokeWidth={2} name="Waiting"   isAnimationActive={false}/>
+                <Area type="monotone" dataKey="active"    stroke="#3B82F6" fill="url(#gA)" strokeWidth={2} name="Active"    isAnimationActive={false}/>
+                <Area type="monotone" dataKey="dlq"       stroke="#FB7185" fill="url(#gD)" strokeWidth={2} name="DLQ"       isAnimationActive={false}/>
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -405,19 +379,16 @@ export default function App() {
 
         {/* Scenarios */}
         <div style={{ background:'#fff', borderRadius:12, padding:'16px 20px', border:'1px solid #E5E7EB' }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:4 }}>
-            Add Jobs
-          </div>
-          <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:12 }}>
-            Click any scenario to enqueue
-          </div>
+          <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:4 }}>Add Jobs</div>
+          <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:12 }}>Click any scenario to enqueue</div>
           {SCENARIOS.map(sc => (
             <button key={sc.id} onClick={() => addJob(sc)} disabled={loading}
               style={{
                 width:'100%', marginBottom:7, padding:'8px 12px',
                 background: sc.bg, border:`1px solid ${sc.border}`,
-                borderRadius:8, cursor:'pointer', textAlign:'left',
-                display:'flex', justifyContent:'space-between', alignItems:'center',
+                borderRadius:8, cursor: loading ? 'not-allowed' : 'pointer',
+                textAlign:'left', display:'flex',
+                justifyContent:'space-between', alignItems:'center',
                 opacity: loading ? 0.6 : 1,
               }}>
               <span style={{fontSize:12,fontWeight:500,color:sc.text}}>{sc.label}</span>
@@ -437,7 +408,7 @@ export default function App() {
               {filter === 'all' ? 'All jobs — newest first' : `Filtered: ${filter.toUpperCase()}`}
             </div>
           </div>
-          <div style={{display:'flex',gap:5}}>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
             {filterLabels.map(f => (
               <button key={f.key} onClick={() => setFilter(f.key)}
                 style={{
@@ -475,16 +446,15 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {filteredJobs.length === 0 ? (
+              {jobs.length === 0 ? (
                 <tr><td colSpan={8} style={{padding:28,textAlign:'center',color:'#D1D5DB',fontSize:12}}>
                   {filter === 'all' ? 'No jobs yet — click a scenario above to add one' : `No ${filter} jobs`}
                 </td></tr>
-              ) : filteredJobs.map((job, i) => {
+              ) : jobs.map((job, i) => {
                 const p = pri(job.priority);
                 const duration = job.completed_at && job.created_at
                   ? Math.round(new Date(job.completed_at) - new Date(job.created_at))
                   : null;
-                const scenarioLabel = SCENARIOS.find(s => s.type === job.type)?.label || job.type;
                 return (
                   <tr key={job.id} style={{borderBottom:'1px solid #F9FAFB',
                     background: job.status === 'active' ? '#EFF6FF' :
