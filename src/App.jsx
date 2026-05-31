@@ -204,7 +204,6 @@ export default function App() {
   const [events,    setEvents]    = useState([]);
   const [filter,    setFilter]    = useState('all');
   const [loading,   setLoading]   = useState(false);
-  
   const socketRef = useRef(null);
 
   const addEvent = useCallback((icon, title, detail, color = '#374151') => {
@@ -226,7 +225,7 @@ export default function App() {
     axios.get(`${API}/api/jobs/stats`).then(r => setStats(r.data));
   }, []);
 
-  // WebSocket
+  // WebSocket Mounting Lifecycle
   useEffect(() => {
     socketRef.current = io(API, {
       transports: ['websocket', 'polling']
@@ -269,7 +268,7 @@ export default function App() {
     });
 
     return () => {
-      socket.disconnect();
+      if (socket) socket.disconnect();
     };
   }, [addEvent]);
 
