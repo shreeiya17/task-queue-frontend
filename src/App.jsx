@@ -7,7 +7,6 @@ import {
 } from 'recharts';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const socket = io(API);
 
 // ── Colours ───────────────────────────────────────────────────────
 const S = {
@@ -205,6 +204,8 @@ export default function App() {
   const [events,    setEvents]    = useState([]);
   const [filter,    setFilter]    = useState('all');
   const [loading,   setLoading]   = useState(false);
+  
+  const socketRef = useRef(null);
 
   const addEvent = useCallback((icon, title, detail, color = '#374151') => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -227,6 +228,11 @@ export default function App() {
 
   // WebSocket
   useEffect(() => {
+    socketRef.current = io(API, {
+      transports: ['websocket', 'polling']
+    });
+    const socket = socketRef.current;
+
     socket.on('connect',    () => { setConnected(true);  addEvent('🔌', 'Dashboard connected', 'Real-time updates active', '#15803D'); });
     socket.on('disconnect', () => { setConnected(false); addEvent('⚠️', 'Dashboard disconnected', 'Attempting to reconnect...', '#B91C1C'); });
 
@@ -262,7 +268,9 @@ export default function App() {
       }]);
     });
 
-    return () => socket.removeAllListeners();
+    return () => {
+      socket.disconnect();
+    };
   }, [addEvent]);
 
   // Add a job
