@@ -178,9 +178,14 @@ export default function App() {
     const url = filter === 'all'
       ? `${API}/api/jobs?limit=50`
       : `${API}/api/jobs?status=${statusParam}&limit=50`;
-    axios.get(url).then(r => setJobs(r.data.jobs || []));
-  }, [filter]);
-
+    
+    axios.get(url)
+      .then(r => setJobs(r.data.jobs || []))
+      .catch(err => {
+        console.error('Failed to fetch jobs:', err.message);
+        addEvent('❌', 'Failed to load jobs', err.message, '#B91C1C');
+      });
+  }, [filter, addEvent]);
   // Load initial stats
   useEffect(() => {
     axios.get(`${API}/api/jobs/stats`).then(r => setStats(r.data));
